@@ -1,0 +1,11 @@
+{
+  "name": "ez-unifi",
+  "description": "Agent-friendly UniFi Network tools. Manage devices, clients, guests, networks, and WLANs with simple CLI scripts. No complex setup - just provide your controller URL and credentials.",
+  "version": "1.0.0",
+  "author": {
+    "name": "rex"
+  },
+  "repository": "https://github.com/YOUR_USERNAME/ez-unifi",
+  "license": "MIT",
+  "keywords": ["unifi", "ubiquiti", "network", "wifi", "guest", "firewall", "ai-agent", "home-automation"]
+}

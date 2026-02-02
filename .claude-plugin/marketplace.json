@@ -1,0 +1,13 @@
+{
+  "name": "ez-unifi",
+  "owner": {
+    "name": "araa47"
+  },
+  "plugins": [
+    {
+      "name": "ez-unifi",
+      "source": "./ez-unifi",
+      "description": "Agent-friendly UniFi Network tools. Manage devices, clients, WiFi networks, firewall rules, and more with simple CLI scripts. Works with UDM Pro/SE, Dream Machine, Cloud Key."
+    }
+  ]
+}

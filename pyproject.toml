@@ -1,0 +1,43 @@
+[project]
+name = "ez-unifi"
+version = "1.0.0"
+description = "Agent-friendly UniFi Network tools for AI agents"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = [
+    "aiounifi>=55",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.6.3",
+    "pre-commit>=3.3.3",
+    "pytest",
+    "pytest-asyncio<0.23",
+    "pytest-cov",
+]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.isort]
+profile = "black"
+src_paths = "tests"
+line_length = 80
+include_trailing_comma = true
+multi_line_output = 3
+
+[tool.ruff]
+select = ["E", "F", "B"]
+exclude = ["__pycache__", "terraform", ".git", ".venv"]
+ignore = ["E501"]
