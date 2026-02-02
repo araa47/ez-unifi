@@ -72,6 +72,8 @@ unifi.py led MAC on --color=#FF0000 --brightness=50  # With color/brightness
 ```bash
 unifi.py ports                     # List all switch ports
 unifi.py port MAC PORT_IDX         # Port details
+unifi.py port-enable MAC PORT_IDX  # Enable switch port
+unifi.py port-disable MAC PORT_IDX # Disable switch port
 unifi.py poe MAC PORT_IDX MODE     # Set PoE mode (auto|off|passthrough|24v)
 unifi.py power-cycle MAC PORT_IDX  # Power cycle a PoE port
 ```
@@ -103,6 +105,7 @@ unifi.py wlans                     # List wireless networks
 unifi.py wlan ID                   # WLAN details
 unifi.py wlan-enable ID            # Enable WLAN
 unifi.py wlan-disable ID           # Disable WLAN
+unifi.py wlan-password ID NEWPASS  # Change WLAN password
 unifi.py wlan-qr ID                # Generate WiFi QR code (PNG file)
 unifi.py wlan-qr ID -o myqr.png    # Custom output filename
 ```
@@ -111,6 +114,7 @@ unifi.py wlan-qr ID -o myqr.png    # Custom output filename
 
 ```bash
 unifi.py port-forwards             # List port forwarding rules
+unifi.py port-forward ID           # Port forward details
 ```
 
 ## Traffic Rules
@@ -120,26 +124,36 @@ unifi.py traffic-rules             # List traffic rules
 unifi.py traffic-rule ID           # Traffic rule details
 unifi.py traffic-rule-enable ID    # Enable traffic rule
 unifi.py traffic-rule-disable ID   # Disable traffic rule
+unifi.py traffic-rule-toggle ID on|off  # Toggle traffic rule state
 ```
 
 ## Traffic Routes
 
 ```bash
 unifi.py traffic-routes            # List traffic routes
+unifi.py traffic-route ID          # Traffic route details
+unifi.py traffic-route-enable ID   # Enable traffic route
+unifi.py traffic-route-disable ID  # Disable traffic route
 ```
 
 ## Firewall
 
 ```bash
 unifi.py firewall-policies         # List firewall policies
+unifi.py firewall-policy ID        # Firewall policy details
 unifi.py firewall-zones            # List firewall zones
+unifi.py firewall-zone ID          # Firewall zone details
 ```
 
 ## DPI (Deep Packet Inspection)
 
 ```bash
 unifi.py dpi-apps                  # List DPI restriction apps
+unifi.py dpi-app ID                # DPI app details
+unifi.py dpi-app-enable ID         # Enable DPI app restriction
+unifi.py dpi-app-disable ID        # Disable DPI app restriction
 unifi.py dpi-groups                # List DPI restriction groups
+unifi.py dpi-group ID              # DPI group details
 ```
 
 ## Hotspot Vouchers

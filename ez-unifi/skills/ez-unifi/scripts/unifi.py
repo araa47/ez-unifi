@@ -32,6 +32,8 @@ DEVICES (APs, Switches, Gateways):
 SWITCH PORTS:
     uv run unifi.py ports                     # List all switch ports
     uv run unifi.py port MAC PORT_IDX         # Port details
+    uv run unifi.py port-enable MAC PORT_IDX  # Enable switch port
+    uv run unifi.py port-disable MAC PORT_IDX # Disable switch port
     uv run unifi.py poe MAC PORT_IDX auto|off|passthrough|24v  # Set PoE mode
     uv run unifi.py power-cycle MAC PORT_IDX  # Power cycle PoE port
 
@@ -54,27 +56,39 @@ WIFI NETWORKS:
     uv run unifi.py wlan ID                   # WLAN details
     uv run unifi.py wlan-enable ID            # Enable WLAN
     uv run unifi.py wlan-disable ID           # Disable WLAN
+    uv run unifi.py wlan-password ID NEWPASS  # Change WLAN password
     uv run unifi.py wlan-qr ID                # Generate WiFi QR code (PNG)
 
 PORT FORWARDING:
     uv run unifi.py port-forwards             # List port forwarding rules
+    uv run unifi.py port-forward ID           # Port forward details
 
 TRAFFIC RULES:
     uv run unifi.py traffic-rules             # List traffic rules
     uv run unifi.py traffic-rule ID           # Traffic rule details
     uv run unifi.py traffic-rule-enable ID    # Enable traffic rule
     uv run unifi.py traffic-rule-disable ID   # Disable traffic rule
+    uv run unifi.py traffic-rule-toggle ID on|off  # Toggle traffic rule
 
 TRAFFIC ROUTES:
     uv run unifi.py traffic-routes            # List traffic routes
+    uv run unifi.py traffic-route ID          # Traffic route details
+    uv run unifi.py traffic-route-enable ID   # Enable traffic route
+    uv run unifi.py traffic-route-disable ID  # Disable traffic route
 
 FIREWALL:
     uv run unifi.py firewall-policies         # List firewall policies
+    uv run unifi.py firewall-policy ID        # Firewall policy details
     uv run unifi.py firewall-zones            # List firewall zones
+    uv run unifi.py firewall-zone ID          # Firewall zone details
 
 DPI (Deep Packet Inspection):
     uv run unifi.py dpi-apps                  # List DPI restriction apps
+    uv run unifi.py dpi-app ID                # DPI app details
+    uv run unifi.py dpi-app-enable ID         # Enable DPI app restriction
+    uv run unifi.py dpi-app-disable ID        # Disable DPI app restriction
     uv run unifi.py dpi-groups                # List DPI restriction groups
+    uv run unifi.py dpi-group ID              # DPI group details
 
 HOTSPOT VOUCHERS:
     uv run unifi.py vouchers                  # List vouchers
@@ -111,8 +125,10 @@ from aiounifi.models.device import (
     DeviceSetOutletCycleEnabledRequest,
     DeviceSetOutletRelayRequest,
     DeviceSetPoePortModeRequest,
+    DeviceSetPortEnabledRequest,
 )
 from aiounifi.models.voucher import Voucher
+from aiounifi.models.wlan import WlanChangePasswordRequest
 from dotenv import load_dotenv
 
 
@@ -419,6 +435,38 @@ async def cmd_power_cycle(ctrl: Controller, args: argparse.Namespace) -> None:
     output(response, raw=True)
 
 
+async def cmd_port_enable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Enable a switch port."""
+    await ctrl.devices.update()
+    mac = args.mac.lower()
+    device = ctrl.devices.get(mac)
+    if not device:
+        print(f"ERROR: Device {mac} not found", file=sys.stderr)
+        sys.exit(1)
+
+    response = await ctrl.request(
+        DeviceSetPortEnabledRequest.create(device, port_idx=args.port_idx, enabled=True)
+    )
+    output(response, raw=True)
+
+
+async def cmd_port_disable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Disable a switch port."""
+    await ctrl.devices.update()
+    mac = args.mac.lower()
+    device = ctrl.devices.get(mac)
+    if not device:
+        print(f"ERROR: Device {mac} not found", file=sys.stderr)
+        sys.exit(1)
+
+    response = await ctrl.request(
+        DeviceSetPortEnabledRequest.create(
+            device, port_idx=args.port_idx, enabled=False
+        )
+    )
+    output(response, raw=True)
+
+
 async def cmd_outlets(ctrl: Controller, args: argparse.Namespace) -> None:
     """List all outlets."""
     await ctrl.devices.update()
@@ -591,6 +639,14 @@ async def cmd_wlan_qr(ctrl: Controller, args: argparse.Namespace) -> None:
     print(f"QR code saved to: {filename}")
 
 
+async def cmd_wlan_password(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Change WLAN password."""
+    response = await ctrl.request(
+        WlanChangePasswordRequest.create(args.id, args.password)
+    )
+    output(response, raw=True)
+
+
 async def cmd_port_forwards(ctrl: Controller, args: argparse.Namespace) -> None:
     """List port forwarding rules."""
     await ctrl.port_forwarding.update()
@@ -599,9 +655,19 @@ async def cmd_port_forwards(ctrl: Controller, args: argparse.Namespace) -> None:
     else:
         output_table(
             list(ctrl.port_forwarding.values()),
-            ["name", "dst_port", "fwd", "fwd_port", "enabled"],
-            ["Name", "Dst Port", "Forward To", "Fwd Port", "Enabled"],
+            ["id", "name", "destination_port", "forward_ip", "forward_port", "enabled"],
+            ["ID", "Name", "Dst Port", "Forward To", "Fwd Port", "Enabled"],
         )
+
+
+async def cmd_port_forward(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get port forward details."""
+    await ctrl.port_forwarding.update()
+    rule = ctrl.port_forwarding.get(args.id)
+    if not rule:
+        print(f"ERROR: Port forward {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(rule)
 
 
 async def cmd_traffic_rules(ctrl: Controller, args: argparse.Namespace) -> None:
@@ -649,34 +715,165 @@ async def cmd_traffic_rule_disable(ctrl: Controller, args: argparse.Namespace) -
     output(response, raw=True)
 
 
+async def cmd_traffic_rule_toggle(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Toggle a traffic rule on or off."""
+    await ctrl.traffic_rules.update()
+    rule = ctrl.traffic_rules.get(args.id)
+    if not rule:
+        print(f"ERROR: Traffic rule {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    state = args.state.lower() == "on"
+    response = await ctrl.traffic_rules.toggle(rule, state)
+    output(response, raw=True)
+
+
 async def cmd_traffic_routes(ctrl: Controller, args: argparse.Namespace) -> None:
     """List traffic routes."""
     await ctrl.traffic_routes.update()
-    output(list(ctrl.traffic_routes.values()))
+    if args.json:
+        output(list(ctrl.traffic_routes.values()))
+    else:
+        output_table(
+            list(ctrl.traffic_routes.values()),
+            ["id", "description", "enabled"],
+            ["ID", "Description", "Enabled"],
+        )
+
+
+async def cmd_traffic_route(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get traffic route details."""
+    await ctrl.traffic_routes.update()
+    route = ctrl.traffic_routes.get(args.id)
+    if not route:
+        print(f"ERROR: Traffic route {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(route)
+
+
+async def cmd_traffic_route_enable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Enable a traffic route."""
+    await ctrl.traffic_routes.update()
+    route = ctrl.traffic_routes.get(args.id)
+    if not route:
+        print(f"ERROR: Traffic route {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    response = await ctrl.traffic_routes.enable(route)
+    output(response, raw=True)
+
+
+async def cmd_traffic_route_disable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Disable a traffic route."""
+    await ctrl.traffic_routes.update()
+    route = ctrl.traffic_routes.get(args.id)
+    if not route:
+        print(f"ERROR: Traffic route {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    response = await ctrl.traffic_routes.disable(route)
+    output(response, raw=True)
 
 
 async def cmd_firewall_policies(ctrl: Controller, args: argparse.Namespace) -> None:
     """List firewall policies."""
     await ctrl.firewall_policies.update()
-    output(list(ctrl.firewall_policies.values()))
+    if args.json:
+        output(list(ctrl.firewall_policies.values()))
+    else:
+        output_table(
+            list(ctrl.firewall_policies.values()),
+            ["id", "name", "action", "enabled"],
+            ["ID", "Name", "Action", "Enabled"],
+        )
+
+
+async def cmd_firewall_policy(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get firewall policy details."""
+    await ctrl.firewall_policies.update()
+    policy = ctrl.firewall_policies.get(args.id)
+    if not policy:
+        print(f"ERROR: Firewall policy {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(policy)
 
 
 async def cmd_firewall_zones(ctrl: Controller, args: argparse.Namespace) -> None:
     """List firewall zones."""
     await ctrl.firewall_zones.update()
-    output(list(ctrl.firewall_zones.values()))
+    if args.json:
+        output(list(ctrl.firewall_zones.values()))
+    else:
+        output_table(
+            list(ctrl.firewall_zones.values()),
+            ["id", "name", "zone_key"],
+            ["ID", "Name", "Zone Key"],
+        )
+
+
+async def cmd_firewall_zone(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get firewall zone details."""
+    await ctrl.firewall_zones.update()
+    zone = ctrl.firewall_zones.get(args.id)
+    if not zone:
+        print(f"ERROR: Firewall zone {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(zone)
 
 
 async def cmd_dpi_apps(ctrl: Controller, args: argparse.Namespace) -> None:
     """List DPI restriction apps."""
     await ctrl.dpi_apps.update()
-    output(list(ctrl.dpi_apps.values()))
+    if args.json:
+        output(list(ctrl.dpi_apps.values()))
+    else:
+        output_table(
+            list(ctrl.dpi_apps.values()),
+            ["id", "enabled", "blocked"],
+            ["ID", "Enabled", "Blocked"],
+        )
+
+
+async def cmd_dpi_app(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get DPI app details."""
+    await ctrl.dpi_apps.update()
+    app = ctrl.dpi_apps.get(args.id)
+    if not app:
+        print(f"ERROR: DPI app {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(app)
+
+
+async def cmd_dpi_app_enable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Enable a DPI app restriction."""
+    response = await ctrl.dpi_apps.enable(args.id)
+    output(response, raw=True)
+
+
+async def cmd_dpi_app_disable(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Disable a DPI app restriction."""
+    response = await ctrl.dpi_apps.disable(args.id)
+    output(response, raw=True)
 
 
 async def cmd_dpi_groups(ctrl: Controller, args: argparse.Namespace) -> None:
     """List DPI restriction groups."""
     await ctrl.dpi_groups.update()
-    output(list(ctrl.dpi_groups.values()))
+    if args.json:
+        output(list(ctrl.dpi_groups.values()))
+    else:
+        output_table(
+            list(ctrl.dpi_groups.values()),
+            ["id", "name"],
+            ["ID", "Name"],
+        )
+
+
+async def cmd_dpi_group(ctrl: Controller, args: argparse.Namespace) -> None:
+    """Get DPI group details."""
+    await ctrl.dpi_groups.update()
+    group = ctrl.dpi_groups.get(args.id)
+    if not group:
+        print(f"ERROR: DPI group {args.id} not found", file=sys.stderr)
+        sys.exit(1)
+    output(group)
 
 
 async def cmd_vouchers(ctrl: Controller, args: argparse.Namespace) -> None:
@@ -813,6 +1010,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("mac", help="Switch MAC address")
     p.add_argument("port_idx", type=int, help="Port index")
 
+    p = subparsers.add_parser("port-enable", help="Enable switch port")
+    p.add_argument("mac", help="Switch MAC address")
+    p.add_argument("port_idx", type=int, help="Port index")
+
+    p = subparsers.add_parser("port-disable", help="Disable switch port")
+    p.add_argument("mac", help="Switch MAC address")
+    p.add_argument("port_idx", type=int, help="Port index")
+
     # Outlets
     subparsers.add_parser("outlets", help="List all outlets")
 
@@ -861,8 +1066,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("id", help="WLAN ID")
     p.add_argument("-o", "--output", help="Output filename")
 
+    p = subparsers.add_parser("wlan-password", help="Change WLAN password")
+    p.add_argument("id", help="WLAN ID")
+    p.add_argument("password", help="New password")
+
     # Port Forwarding
     subparsers.add_parser("port-forwards", help="List port forwarding rules")
+
+    p = subparsers.add_parser("port-forward", help="Port forward details")
+    p.add_argument("id", help="Port forward ID")
 
     # Traffic Rules
     subparsers.add_parser("traffic-rules", help="List traffic rules")
@@ -876,16 +1088,49 @@ def build_parser() -> argparse.ArgumentParser:
     p = subparsers.add_parser("traffic-rule-disable", help="Disable traffic rule")
     p.add_argument("id", help="Rule ID")
 
+    p = subparsers.add_parser("traffic-rule-toggle", help="Toggle traffic rule")
+    p.add_argument("id", help="Rule ID")
+    p.add_argument("state", choices=["on", "off"], help="State")
+
     # Traffic Routes
     subparsers.add_parser("traffic-routes", help="List traffic routes")
 
+    p = subparsers.add_parser("traffic-route", help="Traffic route details")
+    p.add_argument("id", help="Route ID")
+
+    p = subparsers.add_parser("traffic-route-enable", help="Enable traffic route")
+    p.add_argument("id", help="Route ID")
+
+    p = subparsers.add_parser("traffic-route-disable", help="Disable traffic route")
+    p.add_argument("id", help="Route ID")
+
     # Firewall
     subparsers.add_parser("firewall-policies", help="List firewall policies")
+
+    p = subparsers.add_parser("firewall-policy", help="Firewall policy details")
+    p.add_argument("id", help="Policy ID")
+
     subparsers.add_parser("firewall-zones", help="List firewall zones")
+
+    p = subparsers.add_parser("firewall-zone", help="Firewall zone details")
+    p.add_argument("id", help="Zone ID")
 
     # DPI
     subparsers.add_parser("dpi-apps", help="List DPI restriction apps")
+
+    p = subparsers.add_parser("dpi-app", help="DPI app details")
+    p.add_argument("id", help="DPI app ID")
+
+    p = subparsers.add_parser("dpi-app-enable", help="Enable DPI app restriction")
+    p.add_argument("id", help="DPI app ID")
+
+    p = subparsers.add_parser("dpi-app-disable", help="Disable DPI app restriction")
+    p.add_argument("id", help="DPI app ID")
+
     subparsers.add_parser("dpi-groups", help="List DPI restriction groups")
+
+    p = subparsers.add_parser("dpi-group", help="DPI group details")
+    p.add_argument("id", help="DPI group ID")
 
     # Vouchers
     subparsers.add_parser("vouchers", help="List vouchers")
@@ -930,6 +1175,8 @@ COMMANDS = {
     "port": cmd_port,
     "poe": cmd_poe,
     "power-cycle": cmd_power_cycle,
+    "port-enable": cmd_port_enable,
+    "port-disable": cmd_port_disable,
     "outlets": cmd_outlets,
     "outlet": cmd_outlet,
     "outlet-cycle": cmd_outlet_cycle,
@@ -945,16 +1192,28 @@ COMMANDS = {
     "wlan-enable": cmd_wlan_enable,
     "wlan-disable": cmd_wlan_disable,
     "wlan-qr": cmd_wlan_qr,
+    "wlan-password": cmd_wlan_password,
     "port-forwards": cmd_port_forwards,
+    "port-forward": cmd_port_forward,
     "traffic-rules": cmd_traffic_rules,
     "traffic-rule": cmd_traffic_rule,
     "traffic-rule-enable": cmd_traffic_rule_enable,
     "traffic-rule-disable": cmd_traffic_rule_disable,
+    "traffic-rule-toggle": cmd_traffic_rule_toggle,
     "traffic-routes": cmd_traffic_routes,
+    "traffic-route": cmd_traffic_route,
+    "traffic-route-enable": cmd_traffic_route_enable,
+    "traffic-route-disable": cmd_traffic_route_disable,
     "firewall-policies": cmd_firewall_policies,
+    "firewall-policy": cmd_firewall_policy,
     "firewall-zones": cmd_firewall_zones,
+    "firewall-zone": cmd_firewall_zone,
     "dpi-apps": cmd_dpi_apps,
+    "dpi-app": cmd_dpi_app,
+    "dpi-app-enable": cmd_dpi_app_enable,
+    "dpi-app-disable": cmd_dpi_app_disable,
     "dpi-groups": cmd_dpi_groups,
+    "dpi-group": cmd_dpi_group,
     "vouchers": cmd_vouchers,
     "voucher-create": cmd_voucher_create,
     "voucher-delete": cmd_voucher_delete,
