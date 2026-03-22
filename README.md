@@ -20,7 +20,7 @@ npx clawhub@latest install ez-unifi
 
 ### Other Agents (Cursor, Windsurf, etc.)
 
-Copy the `skill/` folder into your agent's skills directory.
+Copy the `skills/ez-unifi/` folder into your agent's skills directory.
 
 ---
 
