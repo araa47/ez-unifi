@@ -6,14 +6,10 @@ Built for AI agents with simple setup - just provide your controller credentials
 
 ## Install
 
-### Claude Code
+### Claude Code (npx skills)
 
 ```bash
-# Add the marketplace
-/plugin marketplace add araa47/ez-unifi
-
-# Install the plugin
-/plugin install ez-unifi@ez-unifi
+npx skills add araa47/ez-unifi
 ```
 
 ### ClawHub
@@ -24,14 +20,14 @@ npx clawhub@latest install ez-unifi
 
 ### Other Agents (Cursor, Windsurf, etc.)
 
-Copy the `ez-unifi/skills/ez-unifi` folder into your agent's skills directory.
+Copy the `skill/` folder into your agent's skills directory.
 
 ---
 
 ## Setup
 
 1. Create a **local admin account** on your UniFi controller:
-   - Go to Settings → System → Administration
+   - Go to Settings > System > Administration
    - Click "Add Admin"
    - **Disable "Remote Access"** (keeps it local-only)
    - Set username/password
@@ -98,4 +94,4 @@ Run `uv run scripts/unifi.py --help` for all commands.
 
 Found a bug or have a feature request? Open an issue or submit a PR!
 
-**Repository:** [github.com/YOUR_USERNAME/ez-unifi](https://github.com/YOUR_USERNAME/ez-unifi)
+**Repository:** [github.com/araa47/ez-unifi](https://github.com/araa47/ez-unifi)

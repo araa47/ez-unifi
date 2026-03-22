@@ -8,13 +8,13 @@ license = "MIT"
 dependencies = [
     "aiounifi>=55",
     "httpx>=0.28.1",
+    "prek>=0.3.4",
     "python-dotenv>=1.2.1",
 ]
 
 [project.optional-dependencies]
 dev = [
     "ruff>=0.6.3",
-    "pre-commit>=3.3.3",
     "pytest",
     "pytest-asyncio<0.23",
     "pytest-cov",

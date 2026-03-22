@@ -11,5 +11,5 @@ on:
             - ready_for_review
 
 jobs:
-    pre-commit:
-        uses: ./.github/workflows/job-pre-commit.yml
+    prek:
+        uses: ./.github/workflows/job-prek.yml
